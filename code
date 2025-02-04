@@ -1,0 +1,184 @@
+
+#pragma once
+
+#include <algorithm>
+#include <iostream>
+
+using namespace std;
+
+template<class T>
+class AVL {
+public:
+    struct Node {
+        Node* left;
+        Node* right;
+        T value;
+        int height;
+
+        Node(T v) : left(nullptr), right(nullptr), value(v), height(1) {}
+    };
+
+    AVL() : root(nullptr), treeSize(0) {}
+
+    ~AVL() {
+        clear();
+    }
+
+    const Node* getRootNode() const {
+        return root;
+    }
+
+    bool insert(T item) {
+        bool inserted = insert(root, item);
+        if (inserted) {
+            treeSize++;
+        }
+        return inserted;
+    }
+
+    bool remove(T item) {
+        bool removed = remove(root, item);
+        if (removed) {
+            treeSize--;
+        }
+        return removed;
+    }
+
+    bool contains(T item) const {
+        return contains(root, item);
+    }
+
+    void clear() {
+        clear(root);
+        root = nullptr;
+        treeSize = 0;
+    }
+
+    int size() const {
+        return treeSize;
+    }
+
+private:
+    Node* root;
+    int treeSize;
+
+    int height(Node* node) const {
+        return node ? node->height : 0;
+    }
+
+    void update_height(Node* node) {
+        if (node) {
+            node->height = max(height(node->left), height(node->right)) + 1;
+        }
+    }
+
+    void promote_left(Node*& root) {
+        Node* newRoot = root->left;
+        root->left = newRoot->right;
+        newRoot->right = root;
+        update_height(root);
+        update_height(newRoot);
+        root = newRoot;
+    }
+
+    void promote_right(Node*& root) {
+        Node* newRoot = root->right;
+        root->right = newRoot->left;
+        newRoot->left = root;
+        update_height(root);
+        update_height(newRoot);
+        root = newRoot;
+    }
+
+    void rebalance(Node*& root) {
+        if (!root) return;
+
+        update_height(root);
+        int balance = height(root->left) - height(root->right);
+
+        if (balance > 1) {
+            if (height(root->left->left) >= height(root->left->right)) {
+                promote_left(root);
+            } else {
+                promote_right(root->left);
+                promote_left(root);
+            }
+        } else if (balance < -1) {
+            if (height(root->right->right) >= height(root->right->left)) {
+                promote_right(root);
+            } else {
+                promote_left(root->right);
+                promote_right(root);
+            }
+        }
+    }
+
+    bool insert(Node*& node, T item) {
+        if (!node) {
+            node = new Node(item);
+            return true;
+        }
+        if (item < node->value) {
+            if (!insert(node->left, item)) return false;
+        } else if (item > node->value) {
+            if (!insert(node->right, item)) return false;
+        } else {
+            return false; // Duplicate item
+        }
+        rebalance(node);
+        return true;
+    }
+
+    bool remove(Node*& node, T item) {
+        if (!node) return false;
+        if (item < node->value) {
+            if (!remove(node->left, item)) return false;
+        } else if (item > node->value) {
+            if (!remove(node->right, item)) return false;
+        } else {
+            if (!node->left || !node->right) {
+                Node* temp = node->left ? node->left : node->right;
+                if (!temp) {
+                    temp = node;
+                    node = nullptr;
+                } else {
+                    *node = *temp;
+                }
+                delete temp;
+            } else {
+                Node* temp = find_min(node->right);
+Instructor
+| 12/03 at 11:40 am
+Grading comment:
+Make sure to use the predecessor instead of the successor
+
+                node->value = temp->value;
+                remove(node->right, temp->value);
+            }
+        }
+        if (!node) return true;
+        rebalance(node);
+        return true;
+    }
+
+    Node* find_min(Node* node) const {
+        Node* current = node;
+        while (current->left) current = current->left;
+        return current;
+    }
+
+    bool contains(Node* node, T item) const {
+        if (!node) return false;
+        if (item < node->value) return contains(node->left, item);
+        if (item > node->value) return contains(node->right, item);
+        return true;
+    }
+
+    void clear(Node* node) {
+        if (node) {
+            clear(node->left);
+            clear(node->right);
+            delete node;
+        }
+    }
+};
